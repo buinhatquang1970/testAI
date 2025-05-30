@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quiz - Kiến thức về Công Cụ GenAI</title>
+</head>
+<body>
+    <h1>Bài Thi Kiến Thức về Công Cụ GenAI</h1>
+
+    <div>
+        <label for="participant-name">Tên người tham gia:</label>
+        <input type="text" id="participant-name" placeholder="Nhập tên của bạn" />
+    </div>
+
+    <div id="timer">Thời gian còn lại: <span id="countdown">5:00</span></div>
+
+    <button id="start-btn" onclick="startQuiz()">Bắt đầu</button>
+
+    <form id="quiz-form">
+        {% for q in questions %}
+        <div class="question" data-correct="{{ q.correct_answer }}" style="opacity:0.4;">
+            <p>{{ q.question_text }}</p>
+            <label><input type="radio" name="q{{ q.id }}" value="A" disabled /> {{ q.answer_a }}</label><br />
+            <label><input type="radio" name="q{{ q.id }}" value="B" disabled /> {{ q.answer_b }}</label><br />
+            <label><input type="radio" name="q{{ q.id }}" value="C" disabled /> {{ q.answer_c }}</label><br />
+            <label><input type="radio" name="q{{ q.id }}" value="D" disabled /> {{ q.answer_d }}</label><br />
+        </div>
+        {% endfor %}
+
+        <button id="submit-btn" type="button" onclick="checkAnswers()" disabled>Nộp bài</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        let countdownTimer;
+        let timeRemaining = 5 * 60;
+        let quizStarted = false;
+        let quizStartTime;
+
+        window.onload = function() {
+            disableQuiz(true);
+        };
+
+        function disableQuiz(disabled) {
+            document.querySelectorAll('input[type=radio]').forEach(el => el.disabled = disabled);
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = disabled;
+            submitBtn.style.opacity = disabled ? '0.5' : '1';
+            document.querySelectorAll('.question').forEach(q => q.style.opacity = disabled ? '0.4' : '1');
+        }
+
+        function startQuiz() {
+            const name = document.getElementById('participant-name').value.trim();
+            if (!name) {
+                alert('Vui lòng nhập tên!');
+                return;
+            }
+            quizStarted = true;
+            quizStartTime = new Date();
+            disableQuiz(false);
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('start-btn').style.opacity = '0.5';
+            startCountdown();
+        }
+
+        function startCountdown() {
+            updateTimer();
+            countdownTimer = setInterval(() => {
+                timeRemaining--;
+                updateTimer();
+                if (timeRemaining <= 0) {
+                    clearInterval(countdownTimer);
+                    alert('Hết giờ!');
+                    checkAnswers();
+                }
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const m = Math.floor(timeRemaining / 60);
+            const s = timeRemaining % 60;
+            document.getElementById('countdown').innerText = `${m}:${s < 10 ? '0' + s : s}`;
+        }
+
+        async function checkAnswers() {
+            if (!quizStarted) {
+                alert('Bạn chưa bắt đầu bài thi!');
+                return;
+            }
+            clearInterval(countdownTimer);
+
+            let score = 0;
+            const questions = document.querySelectorAll('.question');
+            questions.forEach(qDiv => {
+                const correct = qDiv.getAttribute('data-correct');
+                const name = qDiv.querySelector('input[type=radio]').name;
+                const options = document.getElementsByName(name);
+                let selected = null;
+                for (const opt of options) {
+                    if (opt.checked) {
+                        selected = opt.value;
+                        break;
+                    }
+                }
+                if (selected === correct) score++;
+            });
+
+            const name = document.getElementById('participant-name').value;
+            const startTime = quizStartTime.toISOString().slice(0, 19).replace('T', ' ');
+
+            try {
+                const resp = await fetch('/submit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        score: score,
+                        start_time: startTime
+                    })
+                });
+                if (!resp.ok) throw new Error('Lỗi lưu kết quả');
+
+                document.getElementById('result').innerHTML = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
+                disableQuiz(true);
+                document.getElementById('submit-btn').disabled = true;
+                document.getElementById('submit-btn').style.opacity = '0.5';
+            } catch(e) {
+                alert('Lỗi gửi kết quả, vui lòng thử lại.');
+            }
+        }
+    </script>
+</body>
+</html>

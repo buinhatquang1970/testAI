@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trang Quản Trị - Kết Quả Bài Thi GenAI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <div class="admin-container">
+        <h1 class="admin-title">Quản Trị Kết Quả Bài Thi GenAI</h1>
+
+        <!-- Bảng kết quả -->
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>Số thứ tự</th>
+                    <th>Tên người tham gia</th>
+                    <th>Ngày giờ bắt đầu</th>
+                    <th>Kết quả</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ loop.index }}</td> <!-- Dùng loop.index thay vì enumerate -->
+                    <td>{{ result.name }}</td>
+                    <td>{{ result.start_time.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                    <td>{{ result.score }} / 3</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="no-data">Chưa có dữ liệu</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Nút xóa dữ liệu -->
+        <button id="clear-btn" onclick="clearData()">Xóa toàn bộ dữ liệu</button>
+    </div>
+
+    <script>
+        async function clearData() {
+            if (!confirm("Bạn có chắc muốn xóa toàn bộ dữ liệu không?")) return;
+
+            const res = await fetch('/admin/clear', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (!data.error) location.reload();
+        }
+    </script>
+</body>
+</html>

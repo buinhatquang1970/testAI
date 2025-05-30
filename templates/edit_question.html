@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sửa Câu Hỏi</title>
+</head>
+<body>
+    <h1>Sửa Câu Hỏi</h1>
+    {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
+    <form method="post">
+        <p><input type="text" name="question_text" value="{{ question.question_text }}" /></p>
+        <p><input type="text" name="answer_a" value="{{ question.answer_a }}" /></p>
+        <p><input type="text" name="answer_b" value="{{ question.answer_b }}" /></p>
+        <p><input type="text" name="answer_c" value="{{ question.answer_c }}" /></p>
+        <p><input type="text" name="answer_d" value="{{ question.answer_d }}" /></p>
+        <p><input type="text" name="correct_answer" value="{{ question.correct_answer }}" /></p>
+        <p><button type="submit">Cập nhật</button></p>
+    </form>
+</body>
+</html>

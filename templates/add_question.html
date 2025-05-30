@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thêm Câu Hỏi</title>
+</head>
+<body>
+    <h1>Thêm Câu Hỏi Mới</h1>
+    {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
+    <form method="post">
+        <p><input type="text" name="question_text" placeholder="Câu hỏi" /></p>
+        <p><input type="text" name="answer_a" placeholder="Đáp án A" /></p>
+        <p><input type="text" name="answer_b" placeholder="Đáp án B" /></p>
+        <p><input type="text" name="answer_c" placeholder="Đáp án C" /></p>
+        <p><input type="text" name="answer_d" placeholder="Đáp án D" /></p>
+        <p><input type="text" name="correct_answer" placeholder="Đáp án đúng (A/B/C/D)" /></p>
+        <p><button type="submit">Lưu</button></p>
+    </form>
+</body>
+</html>
