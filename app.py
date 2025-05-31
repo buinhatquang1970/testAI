@@ -1,15 +1,24 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, abort
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from flask_migrate import Migrate
 from datetime import datetime
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///quiz_results.db'
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 10}}
+
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    'postgresql://test_quiz_user:BiasoHIhE3vFOLUvwHRSPaNylhlODczD@'
+    'dpg-d0t36qje5dus738r5170-a.oregon-postgres.render.com:5432/test_quiz'
+)
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 class Question(db.Model):
+    __tablename__ = 'question'
     id = db.Column(db.Integer, primary_key=True)
     question_text = db.Column(db.String(200), nullable=False)
     answer_a = db.Column(db.String(100), nullable=False)
@@ -19,16 +28,11 @@ class Question(db.Model):
     correct_answer = db.Column(db.String(1), nullable=False)
 
 class QuizResult(db.Model):
+    __tablename__ = 'quiz_result'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     score = db.Column(db.Integer, nullable=False)
-
-with app.app_context():
-    db.create_all()
-    # Nếu muốn bật WAL mode, có thể bật sau khi tạo bảng:
-    # with db.engine.connect() as conn:
-    #     conn.execute(text('PRAGMA journal_mode=WAL;'))
 
 @app.route('/')
 def index():
@@ -54,17 +58,35 @@ def submit():
     db.session.add(result)
     db.session.commit()
     return jsonify({'message': 'Lưu kết quả thành công'})
+import random
+from flask import jsonify
+
+@app.route('/api/get_questions')
+def get_questions():
+    questions_all = Question.query.all()
+    selected = random.sample(questions_all, min(len(questions_all), 25))
+    result = []
+    for q in selected:
+        result.append({
+            'id': q.id,
+            'question_text': q.question_text,
+            'answer_a': q.answer_a,
+            'answer_b': q.answer_b,
+            'answer_c': q.answer_c,
+            'answer_d': q.answer_d,
+            'correct_answer': q.correct_answer
+        })
+    return jsonify(result)
 
 @app.route('/admin/questions')
 def admin_questions():
     questions = Question.query.order_by(Question.id.asc()).all()
     return render_template('admin_questions.html', questions=questions)
-    
+
 @app.route('/admin/results')
 def admin_results():
     results = QuizResult.query.order_by(QuizResult.start_time.desc()).all()
     return render_template('admin.html', results=results)
-
 
 @app.route('/admin/questions/add', methods=['GET', 'POST'])
 def add_question():
@@ -143,7 +165,6 @@ def delete_question(question_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        # Có thể xử lý lỗi ở đây nếu muốn
     return redirect(url_for('admin_questions'))
 
 if __name__ == '__main__':
