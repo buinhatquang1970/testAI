@@ -1,150 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN</title>
 </head>
-<body>
-    <h1>CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN</h1>
+<body style="background-color: #e6f2ff;">
 
-    <div>
-        <label for="participant-name">Tên người tham gia:</label>
-        <input type="text" id="participant-name" placeholder="Nhập tên của bạn" />
-    </div>
+  <div style="text-align:center; margin-top: 10px;">
+    <img src="logo_CTS.jpg" alt="Logo ARFM" style="max-height: 100px;">
+  </div>
 
-    <button id="start-btn" onclick="startQuiz()">Bắt đầu</button>
+  <h1 style="text-align: center; color: navy; margin-top: 10px;">
+    CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN
+  </h1>
 
-    <div id="timer" style="display:none;">
-        Thời gian còn lại: <span id="countdown">5:00</span>
-    </div>
+  <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px;">
+    <label for="participant-name" style="white-space: nowrap;">Tên người tham gia:</label>
+    <input type="text" id="participant-name" placeholder="Nhập tên của bạn" style="width: 250px; padding: 5px;" />
+    <button id="start-btn" onclick="startQuiz()" style="padding: 6px 15px; cursor: pointer;">Bắt đầu</button>
+  </div>
 
-    <form id="quiz-form" style="display:none;">
-        <!-- Câu hỏi sẽ được tạo động tại đây -->
-    </form>
+  <div id="timer" style="display:none; margin-bottom: 15px;">
+    Thời gian còn lại: <span id="countdown">10:00</span>
+  </div>
 
-    <button id="submit-btn" type="button" onclick="checkAnswers()" disabled style="display:none;">Nộp bài</button>
+  <form id="quiz-form" style="display:none;">
+    <!-- Câu hỏi sẽ được tạo động tại đây -->
+  </form>
 
-    <div id="result"></div>
+  <button id="submit-btn" type="button" onclick="checkAnswers()" disabled style="display:none; margin-top: 15px;">Nộp bài</button>
 
-    <script>
-        let countdownTimer;
-        let timeRemaining = 5 * 60;
-        let quizStarted = false;
-        let quizStartTime;
+  <div id="result" style="margin-top: 15px;"></div>
 
-        function startQuiz() {
-            const name = document.getElementById('participant-name').value.trim();
-            if (!name) {
-                alert('Vui lòng nhập tên!');
-                return;
-            }
-            quizStarted = true;
-            quizStartTime = new Date();
+  <script>
+    let countdownTimer;
+    let timeRemaining = 10 * 60;
+    let quizStarted = false;
+    let quizStartTime;
 
-            // Ẩn nút bắt đầu và ô nhập tên
-            document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('participant-name').disabled = true;
+    function startQuiz() {
+      const name = document.getElementById('participant-name').value.trim();
+      if (!name) {
+        alert('Vui lòng nhập tên!');
+        return;
+      }
+      quizStarted = true;
+      quizStartTime = new Date();
 
-            // Hiện timer, form và nút nộp bài
-            document.getElementById('timer').style.display = 'block';
-            document.getElementById('quiz-form').style.display = 'block';
-            document.getElementById('submit-btn').style.display = 'inline-block';
-            document.getElementById('submit-btn').disabled = false;
+      // Ẩn nút bắt đầu và ô nhập tên
+      document.getElementById('start-btn').style.display = 'none';
+      document.getElementById('participant-name').disabled = true;
 
-            fetchQuestions();
-            startCountdown();
+      // Hiện timer, form và nút nộp bài
+      document.getElementById('timer').style.display = 'block';
+      document.getElementById('quiz-form').style.display = 'block';
+      document.getElementById('submit-btn').style.display = 'inline-block';
+      document.getElementById('submit-btn').disabled = false;
+
+      fetchQuestions();
+      startCountdown();
+    }
+
+    function fetchQuestions() {
+      fetch('/api/get_questions')
+        .then(response => response.json())
+        .then(data => {
+          const form = document.getElementById('quiz-form');
+          form.innerHTML = ''; // xóa câu hỏi cũ nếu có
+          data.forEach(q => {
+            const div = document.createElement('div');
+            div.classList.add('question');
+            div.setAttribute('data-correct', q.correct_answer);
+
+            div.innerHTML = `
+              <p>${q.question_text}</p>
+              <label><input type="radio" name="q${q.id}" value="A" /> ${q.answer_a}</label><br />
+              <label><input type="radio" name="q${q.id}" value="B" /> ${q.answer_b}</label><br />
+              <label><input type="radio" name="q${q.id}" value="C" /> ${q.answer_c}</label><br />
+              <label><input type="radio" name="q${q.id}" value="D" /> ${q.answer_d}</label><br />
+            `;
+            form.appendChild(div);
+          });
+        })
+        .catch(() => alert('Lỗi khi tải câu hỏi!'));
+    }
+
+    function startCountdown() {
+      updateTimer();
+      countdownTimer = setInterval(() => {
+        timeRemaining--;
+        updateTimer();
+        if (timeRemaining <= 0) {
+          clearInterval(countdownTimer);
+          alert('Hết giờ!');
+          checkAnswers();
         }
+      }, 1000);
+    }
 
-        function fetchQuestions() {
-            fetch('/api/get_questions')
-                .then(response => response.json())
-                .then(data => {
-                    const form = document.getElementById('quiz-form');
-                    form.innerHTML = ''; // xóa câu hỏi cũ nếu có
-                    data.forEach(q => {
-                        const div = document.createElement('div');
-                        div.classList.add('question');
-                        div.setAttribute('data-correct', q.correct_answer);
+    function updateTimer() {
+      const m = Math.floor(timeRemaining / 60);
+      const s = timeRemaining % 60;
+      document.getElementById('countdown').innerText = `${m}:${s < 10 ? '0' + s : s}`;
+    }
 
-                        div.innerHTML = `
-                            <p>${q.question_text}</p>
-                            <label><input type="radio" name="q${q.id}" value="A" /> ${q.answer_a}</label><br />
-                            <label><input type="radio" name="q${q.id}" value="B" /> ${q.answer_b}</label><br />
-                            <label><input type="radio" name="q${q.id}" value="C" /> ${q.answer_c}</label><br />
-                            <label><input type="radio" name="q${q.id}" value="D" /> ${q.answer_d}</label><br />
-                        `;
-                        form.appendChild(div);
-                    });
-                })
-                .catch(() => alert('Lỗi khi tải câu hỏi!'));
+    async function checkAnswers() {
+      if (!quizStarted) {
+        alert('Bạn chưa bắt đầu bài thi!');
+        return;
+      }
+      clearInterval(countdownTimer);
+
+      let score = 0;
+      const questions = document.querySelectorAll('.question');
+      questions.forEach(qDiv => {
+        const correct = qDiv.getAttribute('data-correct');
+        const name = qDiv.querySelector('input[type=radio]').name;
+        const options = document.getElementsByName(name);
+        let selected = null;
+        for (const opt of options) {
+          if (opt.checked) {
+            selected = opt.value;
+            break;
+          }
         }
+        if (selected === correct) score++;
+      });
 
-        function startCountdown() {
-            updateTimer();
-            countdownTimer = setInterval(() => {
-                timeRemaining--;
-                updateTimer();
-                if (timeRemaining <= 0) {
-                    clearInterval(countdownTimer);
-                    alert('Hết giờ!');
-                    checkAnswers();
-                }
-            }, 1000);
-        }
+      const name = document.getElementById('participant-name').value;
+      const startTime = quizStartTime.toISOString().slice(0, 19).replace('T', ' ');
 
-        function updateTimer() {
-            const m = Math.floor(timeRemaining / 60);
-            const s = timeRemaining % 60;
-            document.getElementById('countdown').innerText = `${m}:${s < 10 ? '0' + s : s}`;
-        }
+      try {
+        const resp = await fetch('/submit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            name: name,
+            score: score,
+            start_time: startTime
+          })
+        });
+        if (!resp.ok) throw new Error('Lỗi lưu kết quả');
 
-        async function checkAnswers() {
-            if (!quizStarted) {
-                alert('Bạn chưa bắt đầu bài thi!');
-                return;
-            }
-            clearInterval(countdownTimer);
-
-            let score = 0;
-            const questions = document.querySelectorAll('.question');
-            questions.forEach(qDiv => {
-                const correct = qDiv.getAttribute('data-correct');
-                const name = qDiv.querySelector('input[type=radio]').name;
-                const options = document.getElementsByName(name);
-                let selected = null;
-                for (const opt of options) {
-                    if (opt.checked) {
-                        selected = opt.value;
-                        break;
-                    }
-                }
-                if (selected === correct) score++;
-            });
-
-            const name = document.getElementById('participant-name').value;
-            const startTime = quizStartTime.toISOString().slice(0, 19).replace('T', ' ');
-
-            try {
-                const resp = await fetch('/submit', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        name: name,
-                        score: score,
-                        start_time: startTime
-                    })
-                });
-                if (!resp.ok) throw new Error('Lỗi lưu kết quả');
-
-                document.getElementById('result').innerHTML = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
-                // Vô hiệu hóa form sau khi nộp
-                document.getElementById('submit-btn').disabled = true;
-                document.querySelectorAll('#quiz-form input[type=radio]').forEach(i => i.disabled = true);
-            } catch(e) {
-                alert('Lỗi gửi kết quả, vui lòng thử lại.');
-            }
-        }
-    </script>
+        document.getElementById('result').innerHTML = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
+        // Vô hiệu hóa form sau khi nộp
+        document.getElementById('submit-btn').disabled = true;
+        document.querySelectorAll('#quiz-form input[type=radio]').forEach(i => i.disabled = true);
+      } catch(e) {
+        alert('Lỗi gửi kết quả, vui lòng thử lại.');
+      }
+    }
+  </script>
 </body>
 </html>
