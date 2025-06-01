@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from datetime import datetime, timedelta
-import random
+from datetime import datetime
 import pytz
+import random
 
 app = Flask(__name__)
 
@@ -16,9 +16,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Khóa bí mật dùng cho session
 app.secret_key = '1Z3W48560494209819'
-
-# Thiết lập thời gian hết hạn session: 15 phút
-app.permanent_session_lifetime = timedelta(minutes=15)
 
 # Tài khoản admin
 ADMIN_USERNAME = 'admin'
@@ -42,8 +39,9 @@ class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
-    stop_time = db.Column(db.DateTime, nullable=True)   # thêm trường này
+    stop_time = db.Column(db.DateTime, nullable=True)  # Thêm cột stop_time
     score = db.Column(db.Integer, nullable=False)
+
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -52,7 +50,6 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session.permanent = True  # Đặt session là permanent để áp dụng timeout
             session['admin_logged_in'] = True
             return redirect(url_for('admin_questions'))
         else:
@@ -78,7 +75,10 @@ def index():
     questions = Question.query.all()
     return render_template('index.html', questions=questions)
 
-# Set timezone to Vietnam (GMT+7)
+# @from datetime import datetime
+# import pytz
+
+# Múi giờ Việt Nam
 vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
 
 @app.route('/submit', methods=['POST'])
@@ -92,20 +92,22 @@ def submit():
         return jsonify({'error': 'Thiếu dữ liệu'}), 400
 
     try:
-        # Chuyển start_time từ chuỗi sang datetime có timezone VN
+        # Chuyển start_time từ chuỗi sang datetime
         start_time_naive = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-        start_time = vn_tz.localize(start_time_naive)
-
-        # Lấy thời gian stop_time hiện tại theo VN (lúc bấm nộp)
+        start_time = vn_tz.localize(start_time_naive)  # Đưa vào múi giờ Việt Nam
+        
+        # Thời gian stop_time (có thể vẫn sử dụng giờ hệ thống)
         stop_time = datetime.now(vn_tz)
 
     except Exception as e:
         return jsonify({'error': 'Sai định dạng ngày giờ'}), 400
 
+    # Lưu kết quả vào database
     result = QuizResult(name=name, score=score, start_time=start_time, stop_time=stop_time)
     db.session.add(result)
     db.session.commit()
     return jsonify({'message': 'Lưu kết quả thành công'})
+
 
 @app.route('/api/get_questions')
 def get_questions():
