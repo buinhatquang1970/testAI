@@ -129,8 +129,8 @@
       });
 
       const name = document.getElementById('participant-name').value;
-      const startTime = quizStartTime.toISOString();
-      const stopTime = new Date().toISOString();
+      const startTime = quizStartTime.toISOString().slice(0, 19).replace('T', ' ');
+      const stopTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       try {
         const resp = await fetch('/submit', {
@@ -146,6 +146,7 @@
         if (!resp.ok) throw new Error('Lỗi lưu kết quả');
 
         document.getElementById('result').innerHTML = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
+        // Vô hiệu hóa form sau khi nộp
         document.getElementById('submit-btn').disabled = true;
         document.querySelectorAll('#quiz-form input[type=radio]').forEach(i => i.disabled = true);
       } catch(e) {
