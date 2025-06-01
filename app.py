@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from datetime import datetime
+from datetime import datetime, timedelta
+import random
+import pytz
 
 app = Flask(__name__)
 
@@ -12,7 +14,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Khóa bí mật dùng cho session
+app.secret_key = '1Z3W48560494209819'
 
+# Thiết lập thời gian hết hạn session: 15 phút
+app.permanent_session_lifetime = timedelta(minutes=15)
+
+# Tài khoản admin
+ADMIN_USERNAME = 'admin'
+ADMIN_PASSWORD = '123456@'  # Thay đổi mật khẩu này theo ý bạn
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -32,12 +42,44 @@ class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
+    stop_time = db.Column(db.DateTime, nullable=True)   # thêm trường này
     score = db.Column(db.Integer, nullable=False)
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session.permanent = True  # Đặt session là permanent để áp dụng timeout
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_questions'))
+        else:
+            error = 'Tên đăng nhập hoặc mật khẩu không đúng'
+    return render_template('login.html', error=error)
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_login'))
+
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
     questions = Question.query.all()
     return render_template('index.html', questions=questions)
+
+# Set timezone to Vietnam (GMT+7)
+vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -50,16 +92,20 @@ def submit():
         return jsonify({'error': 'Thiếu dữ liệu'}), 400
 
     try:
-        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-    except:
+        # Chuyển start_time từ chuỗi sang datetime có timezone VN
+        start_time_naive = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+        start_time = vn_tz.localize(start_time_naive)
+
+        # Lấy thời gian stop_time hiện tại theo VN (lúc bấm nộp)
+        stop_time = datetime.now(vn_tz)
+
+    except Exception as e:
         return jsonify({'error': 'Sai định dạng ngày giờ'}), 400
 
-    result = QuizResult(name=name, score=score, start_time=start_time)
+    result = QuizResult(name=name, score=score, start_time=start_time, stop_time=stop_time)
     db.session.add(result)
     db.session.commit()
     return jsonify({'message': 'Lưu kết quả thành công'})
-import random
-from flask import jsonify
 
 @app.route('/api/get_questions')
 def get_questions():
@@ -79,16 +125,19 @@ def get_questions():
     return jsonify(result)
 
 @app.route('/admin/questions')
+@login_required
 def admin_questions():
     questions = Question.query.order_by(Question.id.asc()).all()
     return render_template('admin_questions.html', questions=questions)
 
 @app.route('/admin/results')
+@login_required
 def admin_results():
     results = QuizResult.query.order_by(QuizResult.start_time.desc()).all()
     return render_template('admin.html', results=results)
 
 @app.route('/admin/questions/add', methods=['GET', 'POST'])
+@login_required
 def add_question():
     if request.method == 'POST':
         question_text = request.form.get('question_text', '').strip()
@@ -124,6 +173,7 @@ def add_question():
     return render_template('add_question.html')
 
 @app.route('/admin/questions/edit/<int:question_id>', methods=['GET', 'POST'])
+@login_required
 def edit_question(question_id):
     question = Question.query.get_or_404(question_id)
     if request.method == 'POST':
@@ -158,6 +208,7 @@ def edit_question(question_id):
     return render_template('edit_question.html', question=question)
 
 @app.route('/admin/questions/delete/<int:question_id>', methods=['POST'])
+@login_required
 def delete_question(question_id):
     question = Question.query.get_or_404(question_id)
     try:
