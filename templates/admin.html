@@ -12,27 +12,36 @@
 
         <!-- Bảng kết quả -->
         <table class="result-table">
-            <thead>
-                <tr>
-                    <th>Số thứ tự</th>
-                    <th>Tên người tham gia</th>
-                    <th>Ngày giờ bắt đầu</th>
-                    <th>Kết quả</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for result in results %}
-                <tr>
-                    <td>{{ loop.index }}</td> <!-- Dùng loop.index thay vì enumerate -->
-                    <td>{{ result.name }}</td>
-                    <td>{{ result.start_time.strftime("%Y-%m-%d %H:%M:%S") }}</td>
-                    <td>{{ result.score }} / 3</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4" class="no-data">Chưa có dữ liệu</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <thead>
+        <tr>
+            <th>Số thứ tự</th>
+            <th>Tên người tham gia</th>
+            <th>Ngày giờ bắt đầu</th>
+            <th>Giờ nộp bài</th>   <!-- thêm cột này -->
+            <th>Kết quả</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in results %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ result.name }}</td>
+            <td>{{ result.start_time.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+            <td>
+              {% if result.stop_time %}
+                {{ result.stop_time.strftime("%Y-%m-%d %H:%M:%S") }}
+              {% else %}
+                Chưa có
+              {% endif %}
+            </td>
+            <td>{{ result.score }} </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="no-data">Chưa có dữ liệu</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 
         <!-- Nút xóa dữ liệu -->
         <button id="clear-btn" onclick="clearData()">Xóa toàn bộ dữ liệu</button>
