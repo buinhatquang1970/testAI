@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title> CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN</title>
+  <title>CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN</title>
+  <style>
+    /* Font size 16px cho câu hỏi */
+    .question p {
+      font-size: 16px;
+      margin: 5px 0;
+    }
+  </style>
 </head>
 <body style="background-color: #e6f2ff;">
 
@@ -11,14 +18,14 @@
     <img src="{{ url_for('static', filename='logo_CTS.jpg') }}" alt="Logo ARFM" style="max-height: 100px;">
   </div>
 
- <h1 style="text-align: center; color: navy; margin-top: 10px; font-size: 20px;">
-    THI TRẮC NGHIỆM CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN
+  <h1 style="text-align: center; color: navy; margin-top: 10px; font-size: 20px;">
+    CHINH PHỤC GEN AI – ĐỘT PHÁ TƯ DUY, ỨNG DỤNG THỰC TIỄN
   </h1>
 
   <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px;">
     <label for="participant-name" style="white-space: nowrap;">Đội tham gia:</label>
     <select id="participant-name" style="width: 250px; padding: 5px;">
-      <option value="" disabled selected>Chọn tên đội</option>
+      <option value="" disabled selected>Chọn đội</option>
       <option>Văn phòng Cục</option>
       <option>Phòng CSQH</option>
       <option>Phòng AĐCP</option>
@@ -133,23 +140,48 @@
 
       let score = 0;
       const questions = document.querySelectorAll('.question');
-      questions.forEach(qDiv => {
+      let wrongQuestions = [];
+
+      questions.forEach((qDiv, index) => {
         const correct = qDiv.getAttribute('data-correct');
-        const name = qDiv.querySelector('input[type=radio]').name;
-        const options = document.getElementsByName(name);
+        const radios = qDiv.querySelectorAll('input[type=radio]');
         let selected = null;
-        for (const opt of options) {
-          if (opt.checked) {
-            selected = opt.value;
+
+        // Reset lại style các đáp án trước khi tô màu
+        radios.forEach(radio => {
+          const label = radio.parentElement;
+          label.style.color = '';
+          label.style.fontWeight = 'normal';
+        });
+
+        for (const radio of radios) {
+          if (radio.checked) {
+            selected = radio.value;
             break;
           }
         }
-        if (selected === correct) score++;
+
+        radios.forEach(radio => {
+          const label = radio.parentElement;
+          if (radio.value === correct) {
+            label.style.color = 'green';
+            label.style.fontWeight = 'bold';
+          }
+          if (selected !== correct && radio.checked) {
+            label.style.color = 'red';
+          }
+        });
+
+        if (selected === correct) {
+          score++;
+        } else {
+          wrongQuestions.push(index + 1);
+        }
       });
 
       const name = document.getElementById('participant-name').value;
-      const startTime = quizStartTime.toISOString().slice(0, 19).replace('T', ' ');
-      const stopTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const startTime = quizStartTime.toISOString();
+      const stopTime = new Date().toISOString();
 
       try {
         const resp = await fetch('/submit', {
@@ -164,7 +196,13 @@
         });
         if (!resp.ok) throw new Error('Lỗi lưu kết quả');
 
-        document.getElementById('result').innerHTML = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
+        let resultText = `Bạn <b>${name}</b> trả lời đúng ${score} / ${questions.length} câu hỏi!`;
+        if (wrongQuestions.length > 0) {
+          resultText += `<br>Bạn trả lời sai câu số: ${wrongQuestions.join(', ')}`;
+        }
+
+        document.getElementById('result').innerHTML = resultText;
+
         // Vô hiệu hóa form sau khi nộp
         document.getElementById('submit-btn').disabled = true;
         document.querySelectorAll('#quiz-form input[type=radio]').forEach(i => i.disabled = true);
