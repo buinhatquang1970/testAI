@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
+from dateutil.parser import isoparse
 import pytz
 import random
 
@@ -14,12 +15,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Khóa bí mật dùng cho session
 app.secret_key = '1Z3W48560494209819'
 
-# Tài khoản admin
 ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = '123456@'  # Thay đổi mật khẩu này theo ý bạn
+ADMIN_PASSWORD = '123456@'
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -38,10 +37,9 @@ class QuizResult(db.Model):
     __tablename__ = 'quiz_result'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
-    stop_time = db.Column(db.DateTime, nullable=True)  # Thêm cột stop_time
+    start_time = db.Column(db.DateTime(timezone=True), nullable=False)
+    stop_time = db.Column(db.DateTime(timezone=True), nullable=True)
     score = db.Column(db.Integer, nullable=False)
-
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -75,10 +73,7 @@ def index():
     questions = Question.query.all()
     return render_template('index.html', questions=questions)
 
-# @from datetime import datetime
-# import pytz
 
-# Múi giờ Việt Nam
 vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
 
 @app.route('/submit', methods=['POST'])
@@ -87,26 +82,35 @@ def submit():
     name = data.get('name')
     score = data.get('score')
     start_time_str = data.get('start_time')
+    stop_time_str = data.get('stop_time')
 
-    if not name or score is None or not start_time_str:
+    if not name or score is None or not start_time_str or not stop_time_str:
         return jsonify({'error': 'Thiếu dữ liệu'}), 400
 
     try:
-        # Chuyển start_time từ chuỗi sang datetime
-        start_time_naive = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-        start_time = vn_tz.localize(start_time_naive)  # Đưa vào múi giờ Việt Nam
-        
-        # Thời gian stop_time (có thể vẫn sử dụng giờ hệ thống)
-        stop_time = datetime.now(vn_tz)
+        start_time = isoparse(start_time_str)
+        stop_time = isoparse(stop_time_str)
+
+        # Nếu chưa có timezone thì gán múi giờ VN
+        if start_time.tzinfo is None:
+            start_time = vn_tz.localize(start_time)
+        else:
+            # Chuyển về timezone VN nếu có timezone khác
+            start_time = start_time.astimezone(vn_tz)
+
+        if stop_time.tzinfo is None:
+            stop_time = vn_tz.localize(stop_time)
+        else:
+            stop_time = stop_time.astimezone(vn_tz)
 
     except Exception as e:
-        return jsonify({'error': 'Sai định dạng ngày giờ'}), 400
+        return jsonify({'error': f'Sai định dạng ngày giờ: {str(e)}'}), 400
 
-    # Lưu kết quả vào database
     result = QuizResult(name=name, score=score, start_time=start_time, stop_time=stop_time)
     db.session.add(result)
     db.session.commit()
     return jsonify({'message': 'Lưu kết quả thành công'})
+
 
 
 @app.route('/api/get_questions')
@@ -132,11 +136,17 @@ def admin_questions():
     questions = Question.query.order_by(Question.id.asc()).all()
     return render_template('admin_questions.html', questions=questions)
 
+
 @app.route('/admin/results')
 @login_required
 def admin_results():
-    results = QuizResult.query.order_by(QuizResult.start_time.desc()).all()
-    return render_template('admin.html', results=results)
+    results = QuizResult.query.order_by(QuizResult.score.desc(), (QuizResult.stop_time - QuizResult.start_time)).all()
+
+    # Lấy id của bản ghi mới nhất (hoặc gần đây nhất)
+    latest_result = QuizResult.query.order_by(QuizResult.id.desc()).first()
+    latest_result_id = latest_result.id if latest_result else None
+
+    return render_template('admin.html', results=results, latest_result_id=latest_result_id)
 
 @app.route('/admin/questions/add', methods=['GET', 'POST'])
 @login_required
