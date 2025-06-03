@@ -9,8 +9,8 @@ import random
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    'postgresql://test_quiz_user:BiasoHIhE3vFOLUvwHRSPaNylhlODczD@'
-    'dpg-d0t36qje5dus738r5170-a.oregon-postgres.render.com:5432/test_quiz'
+    'postgresql://testai_user:G1IuPBJS5juxij9C8Jsoxru1OkHy5FnJ@'
+    'dpg-d0vc4cm3jp1c73e113a0-a.oregon-postgres.render.com/testai'
 )
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
