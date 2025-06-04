@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Bình chọn ảnh AI kỷ niêm 32 năm thành lập Cục Tần số vô tuyến điện</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+    td, th {
+      border: 1px solid #aaa;
+      padding: 8px;
+      text-align: center;
+    }
+    .disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center">Bình chọn giải thưởng cho ảnh AI</h2>
+  <form id="voteForm">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Chân thực nhất</th>
+          <th>Hài hước nhất</th>
+          <th>Ấn tượng nhất</th>
+          <th>Dễ thương nhất</th>
+          <th>Phá cách nhất</th>
+          <th>Chuyên nghiệp nhất</th>
+          <th>Sáng tạo nhất</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div style="text-align:center">
+      <label for="user">Tên người bình chọn: </label>
+      <input type="text" id="user" required placeholder="Nhập tên hoặc mã định danh">
+      <br><br>
+      <button type="submit">Gửi bình chọn</button>
+    </div>
+  </form>
+
+  <script>
+    const images = ["Ảnh 1", "Ảnh 2", "Ảnh 3", "Ảnh 4", "Ảnh 5", "Ảnh 6", "Ảnh 7"];
+    const awards = [
+      "Chân thực nhất",
+      "Hài hước nhất",
+      "Ấn tượng nhất",
+      "Dễ thương nhất",
+      "Phá cách nhất",
+      "Chuyên nghiệp nhất",
+      "Sáng tạo nhất"
+    ];
+
+    const tbody = document.querySelector("tbody");
+
+    images.forEach((img, rowIdx) => {
+      const tr = document.createElement("tr");
+      const labelCell = document.createElement("td");
+      labelCell.textContent = img;
+      tr.appendChild(labelCell);
+
+      awards.forEach((award, colIdx) => {
+        const td = document.createElement("td");
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = `row-${rowIdx}`;
+        radio.dataset.row = rowIdx;
+        radio.dataset.col = colIdx;
+        td.appendChild(radio);
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    document.querySelectorAll("input[type='radio']").forEach(radio => {
+      radio.addEventListener("change", function() {
+        const row = this.dataset.row;
+        const col = this.dataset.col;
+
+        document.querySelectorAll(`input[data-row='${row}']`).forEach(el => {
+          if (el !== this) el.closest("td").classList.add("disabled");
+        });
+
+        document.querySelectorAll(`input[data-col='${col}']`).forEach(el => {
+          if (el !== this) el.closest("td").classList.add("disabled");
+        });
+
+        this.closest("td").classList.remove("disabled");
+      });
+    });
+
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxMbiCGzc6oEU9lBGTlV4PtaFnoOQQO9W61sszH-EXYoKQkFwGmODb5Bl_aZ--B_HtN/exec"; 
+
+    document.getElementById("voteForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const user = document.getElementById("user").value.trim();
+      if (!user) {
+        alert("Vui lòng nhập tên người bình chọn!");
+        return;
+      }
+
+      const selected = document.querySelectorAll("input[type='radio']:checked");
+      if (selected.length !== 7) {
+        alert("Bạn phải chọn đủ 7 giải thưởng cho 7 ảnh!");
+        return;
+      }
+
+      const votes = [];
+      selected.forEach(input => {
+        const row = parseInt(input.dataset.row);
+        const col = parseInt(input.dataset.col);
+        votes.push({
+          user: user,
+          image: images[row],
+          award: awards[col]
+        });
+      });
+
+      fetch(scriptURL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(votes)
+      })
+      .then(res => res.text())
+      .then(response => {
+        alert("Bình chọn đã được gửi thành công!");
+        document.getElementById("voteForm").reset();
+        document.querySelectorAll("td").forEach(td => td.classList.remove("disabled"));
+      })
+      .catch(err => alert("Gửi dữ liệu thất bại: " + err));
+    });
+  </script>
+</body>
+</html>
